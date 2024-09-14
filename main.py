@@ -1,38 +1,44 @@
 import anndata as ad
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
+from scipy.spatial import ConvexHull
 
-#calculamos la orientacion
-def orientacion(p, q, r):
-    return (q[1] - p[1]) * (r[0] - q[0]) - (q[0] - p[0]) * (r[1] - q[1])
+# Leer los datos desde el archivo h5ad
+datos = ad.read_h5ad('celulas.h5ad')
 
-#punto mas bajo
-def punto_mas_bajo(puntos):
-    return min(puntos, key=lambda p: (p[1], p[0]))
+# Obtener las coordenadas UMAP y los IDs de los clusters
+coordenadas = datos.obsm['X_UMAP']
+clusterIds = datos.obs['cluster_id'].copy()
 
-#graham para encontrar el convex
-def graham_scan(cluster_coords):
-    punto_base = punto_mas_bajo(cluster_coords)
-    
-    #ordenar por angulo
-    puntos = sorted(cluster_coords, key=lambda p: (np.arctan2(p[1] - punto_base[1], p[0] - punto_base[0]), p[1], p[0]))
-    
-    #se inicializa con los dos primeros puntos
-    hull = [puntos[0], puntos[1]]
-    
-    #construir convexhull
-    for p in puntos[2:]:
-        while len(hull) > 1 and orientacion(hull[-2], hull[-1], p) <= 0:
-            hull.pop()
-        hull.append(p)
 
-    return np.array(hull)
+# Función para calcular los convex hulls para cada cluster usando ConvexHull
+def convex_hulls(coordenadas, clusterIds):
+    convexHulls = {}
+    for clusterId in np.unique(clusterIds):
+        clusterCoordenadas = coordenadas[clusterIds == clusterId]
+        hull = ConvexHull(clusterCoordenadas)  
+        convexHulls[clusterId] = hull
+    return convexHulls
 
-#leer el archivo .h5ad
-adata = ad.read_h5ad('celulas.h5ad')
-print(adata)
+# Calcular los convex hulls
+resultado = convex_hulls(coordenadas, clusterIds)
 
-#obtenemos las cordenadas
-umap_coords = adata.obsm['X_UMAP']
-cluster_ids = adata.obs['cluster_id']
+
+#Funcion para graficar los datos
+def grafica(coordenadas, idsOriginales, clusterIds, resultado):
+    plt.figure(figsize=(12, 10))
+    clustersUnicos = np.unique(idsOriginales)
+    colores = plt.cm.get_cmap('tab10', len(clustersUnicos))
+
+    for i, clusterId in enumerate(clustersUnicos):
+        clusterCoordenadas = coordenadas[idsOriginales == clusterId]
+        plt.scatter(clusterCoordenadas[:, 0], clusterCoordenadas[:, 1], s=5, color=colores(i), label=f'Cluster {clusterId}')
+
+
+    plt.legend()
+    plt.title('Convex Hull')
+    plt.xlabel('UMAP 1')
+    plt.ylabel('UMAP 2')
+    plt.show()
+
+grafica(coordenadas, datos.obs['cluster_id'], clusterIds, resultado)
