@@ -28,36 +28,29 @@ resultado = convex_hulls(coordenadas, clusterIds)
 def grafica(coords, cluster_ids, res):
     plt.figure(figsize=(12, 10))
     uni_clusters = np.unique(cluster_ids)
-    
-    colores = plt.colormaps['tab10'](np.linspace(0, 1, len(uni_clusters)))
-
-    all_hull_points = np.vstack([hull for hull in res.values() if len(hull) >= 3])
-    
-    #if len(all_hull_points) >= 3:
-        #corregir para no utilizar graham
-        
-        #hull_of_hulls = graham_scan(all_hull_points)
-        #plt.plot(np.append(hull_of_hulls[:, 0], hull_of_hulls[0, 0]),
-                 #np.append(hull_of_hulls[:, 1], hull_of_hulls[0, 1]),
-                 #color='black', linewidth=2, linestyle='--', label='Contorno global')
+    colores = plt.cm.get_cmap('tab10', len(uni_clusters))
 
     for i, cluster_id in enumerate(uni_clusters):
         cluster_coords = coords[cluster_ids == cluster_id]
-        color = colores[i]
-        
-        #puntos
-        plt.scatter(cluster_coords[:, 0], cluster_coords[:, 1], s=10, color=color, alpha=0.6, label=f'Cluster {cluster_id}')
+        plt.scatter(cluster_coords[:, 0], cluster_coords[:, 1], s=5, color=colores(i), label=f'Cluster {cluster_id}')
 
-        #coordenadas del hull
-        if cluster_id in res:
-            hull_coords = res[cluster_id]
-            if len(hull_coords) >= 3:
-                #conectar los puntos
-                hull_coords_closed = np.vstack((hull_coords, hull_coords[0]))
-                plt.plot(hull_coords_closed[:, 0], hull_coords_closed[:, 1], color=color, linewidth=2)
+        # Obtener el ConvexHull para el cluster
+        hull = res[cluster_id]
+
+        # Graficar los vértices del hull
+        for simplex in hull.simplices:
+            plt.plot(cluster_coords[simplex, 0], cluster_coords[simplex, 1], 'k-', color=colores(i))
+
+        # Obtener el ConvexHull para el cluster
+        hull = res[cluster_id]
+
+        # Graficar los vértices del hull
+        for simplex in hull.simplices:
+            plt.plot(cluster_coords[simplex, 0], cluster_coords[simplex, 1], 'k-', color=colores(i))
+   
 
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-    plt.title('UMAP con Líneas de Contorno por Cluster y Contorno Global', fontsize=16)
+    plt.title('Analisis de datos con UMAP y Convex hull ', fontsize=16)
     plt.xlabel('UMAP 1', fontsize=12)
     plt.ylabel('UMAP 2', fontsize=12)
     plt.grid(True, linestyle='--', alpha=0.7)
