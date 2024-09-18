@@ -1,60 +1,57 @@
 import anndata as ad
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.spatial import ConvexHull
 
-#leer los datos desde el archivo h5ad
+#determinante
+def orientacion(p, q, r):
+    return (q[0] - p[0]) * (r[1] - q[1]) - (q[1] - p[1]) * (r[0] - q[0])
+
+#punto mas bajo
+def punto_mas_bajo(puntos):
+    return min(puntos, key=lambda p: (p[1], p[0]))
+
+#Graham para encontrar convexhull
+def graham_scan(cluster_coords):
+    #punto más bajo
+    punto_base = punto_mas_bajo(cluster_coords)
+
+    #puntos por ángulo polar respecto al punto base
+    sorted_points = sorted(cluster_coords, key=lambda p: (np.arctan2(p[1] - punto_base[1], p[0] - punto_base[0]), p[1], p[0]))
+
+    #inicializamos el stack con los primeros dos puntos
+    hull = [punto_base]
+
+    #iteramos sobre los puntos restantes y construimos el convex hull
+    for p in sorted_points:
+        while len(hull) > 1 and orientacion(hull[-2], hull[-1], p) <= 0:
+            hull.pop()
+        hull.append(p)
+
+    return np.array(hull)
+
+#obtenemos los datos del archivo de los clusters
 datos = ad.read_h5ad('celulas.h5ad')
 
-#obtener las coordenadas UMAP y los IDs de los clusters
+#separamos en las coordenadas y los IDs de los clusters
 coordenadas = datos.obsm['X_UMAP']
 clusterIds = datos.obs['cluster_id'].copy()
 
-
-#función para calcular los convex hulls para cada cluster usando ConvexHull
+#calculamos los clusters gracias a la funcion graham_scan
 def convex_hulls(coordenadas, clusterIds):
     convexHulls = {}
     for clusterId in np.unique(clusterIds):
         clusterCoordenadas = coordenadas[clusterIds == clusterId]
-        hull = ConvexHull(clusterCoordenadas)  
+        
+        #analizar que tenga un numero de puntos validos ya que no funcionaba anteriormente
+        if len(clusterCoordenadas) < 3:
+            print(f'Cluster {clusterId} tiene menos de 3 puntos, se omitirá.')
+            continue
+        
+        hull = graham_scan(clusterCoordenadas)
+        #vamos guardando cada hull en un arreglo, este nos ayudara a graficar y unir los puntos de las orillas
         convexHulls[clusterId] = hull
     return convexHulls
 
-#calcular los convex hulls
+
 resultado = convex_hulls(coordenadas, clusterIds)
 
-
-#graficar
-def grafica(coords, cluster_ids, res):
-    plt.figure(figsize=(12, 10))
-    uni_clusters = np.unique(cluster_ids)
-    colores = plt.cm.get_cmap('tab10', len(uni_clusters))
-
-    for i, cluster_id in enumerate(uni_clusters):
-        cluster_coords = coords[cluster_ids == cluster_id]
-        plt.scatter(cluster_coords[:, 0], cluster_coords[:, 1], s=5, color=colores(i), label=f'Cluster {cluster_id}')
-
-        # Obtener el ConvexHull para el cluster
-        hull = res[cluster_id]
-
-        # Graficar los vértices del hull
-        for simplex in hull.simplices:
-            plt.plot(cluster_coords[simplex, 0], cluster_coords[simplex, 1], 'k-', color=colores(i))
-
-        # Obtener el ConvexHull para el cluster
-        hull = res[cluster_id]
-
-        # Graficar los vértices del hull
-        for simplex in hull.simplices:
-            plt.plot(cluster_coords[simplex, 0], cluster_coords[simplex, 1], 'k-', color=colores(i))
-   
-
-    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-    plt.title('Analisis de datos con UMAP y Convex hull ', fontsize=16)
-    plt.xlabel('UMAP 1', fontsize=12)
-    plt.ylabel('UMAP 2', fontsize=12)
-    plt.grid(True, linestyle='--', alpha=0.7)
-    plt.tight_layout()
-    plt.show()
-
-grafica(coordenadas, clusterIds, resultado)
