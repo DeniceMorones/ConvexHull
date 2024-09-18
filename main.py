@@ -55,3 +55,38 @@ def convex_hulls(coordenadas, clusterIds):
 
 resultado = convex_hulls(coordenadas, clusterIds)
 
+# Calcular los convex hulls usando Graham Scan
+resultado = convex_hulls(coordenadas, clusterIds)
+
+def grafica(coords, cluster_ids, res):
+    plt.figure(figsize=(12, 10))
+    uni_clusters = np.unique(cluster_ids)
+    colores = plt.cm.get_cmap('tab10', len(uni_clusters))
+
+    for i, cluster_id in enumerate(uni_clusters):
+        cluster_coords = coords[cluster_ids == cluster_id]
+
+        # Graficar los puntos de cada cluster
+        plt.scatter(cluster_coords[:, 0], cluster_coords[:, 1], s=5, color=colores(i), label=f'Cluster {cluster_id}')
+
+         # Obtener las coordenadas para el cluster
+        if cluster_id in res:  # Comprobar si el hull existe
+            hull_coords = res[cluster_id]
+            if len(hull_coords) >= 3:  # tiene al menos 3 puntos
+                plt.fill(hull_coords[:, 0], hull_coords[:, 1], color=colores(i), alpha=0.2)
+
+                # Cerrar el ciclo añadiendo el primer punto al final
+                hull_coords_closed = np.vstack([hull_coords, hull_coords[0]])
+
+                plt.plot(hull_coords_closed[:, 0], hull_coords_closed[:, 1], color=colores(i), linestyle='-', linewidth=2)
+
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.title('Análisis de datos con UMAP Graham Scan', fontsize=16)
+    plt.xlabel('UMAP 1', fontsize=12)
+    plt.ylabel('UMAP 2', fontsize=12)
+    plt.grid(True, linestyle='--', alpha=0.7)
+    plt.tight_layout()
+    plt.show()
+
+# Graficar los clusters y sus convex hulls
+grafica(coordenadas, clusterIds, resultado)
