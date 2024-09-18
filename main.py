@@ -78,7 +78,6 @@ def grafica(coords, cluster_ids, res):
                 # Cerrar el ciclo añadiendo el primer punto al final
                 hull_coords_closed = np.vstack([hull_coords, hull_coords[0]])
 
-                # Graficar el Convex Hull
                 plt.plot(hull_coords_closed[:, 0], hull_coords_closed[:, 1], color=colores(i), linestyle='-', linewidth=2)
 
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
